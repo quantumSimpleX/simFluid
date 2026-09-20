@@ -116,6 +116,25 @@
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
 
+  input.numIn {
+    font: inherit; color: var(--ink); background: var(--bezel-0);
+    border: 1px solid var(--panel-line); border-radius: 3px;
+    width: 6.5ch; text-align: right; padding: 1px 3px; -moz-appearance: textfield;
+  }
+  input.numIn:hover { border-color: var(--ink-faint); }
+  input.numIn:focus { outline: none; border-color: var(--accent); }
+  input.numIn::-webkit-inner-spin-button,
+  input.numIn::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .dock-head .fps {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 400;
+    letter-spacing: 0; text-transform: none; color: var(--ink-faint); margin-left: 8px;
+  }
+
+  .colorRow { display: flex; align-items: center; gap: 10px; }
+  .colorRow input[type="color"] { flex: 1 1 auto; }
+  .colorRow .swatches { flex: 0 0 auto; }
+
   input[type="range"] {
     -webkit-appearance: none; appearance: none;
     width: 100%; height: 3px; background: var(--panel-line);
@@ -177,7 +196,7 @@
 
   <div class="dock">
     <div class="dock-head">
-      <span class="label">Burner</span>
+      <span class="label">Burner <span class="fps" id="fpsVal"></span></span>
       <button class="power" id="powerBtn" data-on="true" type="button">
         <span class="dot"></span><span id="powerLabel">Lit</span>
       </button>
@@ -185,40 +204,39 @@
 
     <div class="controls">
       <div class="ctl">
-        <div class="ctl-top"><label for="widthIn">Screen width</label><span class="val"><span id="widthVal">1600</span> px</span></div>
+        <div class="ctl-top"><label for="widthIn">Screen width</label><span class="val"><input type="number" class="numIn" id="widthNum" min="600" max="2600" step="10" value="1600"> px</span></div>
         <input type="range" id="widthIn" min="600" max="2600" step="10" value="1600">
       </div>
       <div class="ctl">
-        <div class="ctl-top"><label for="heightIn">Screen height</label><span class="val"><span id="heightVal">300</span> px</span></div>
+        <div class="ctl-top"><label for="heightIn">Screen height</label><span class="val"><input type="number" class="numIn" id="heightNum" min="140" max="620" step="5" value="300"> px</span></div>
         <input type="range" id="heightIn" min="140" max="620" step="5" value="300">
       </div>
       <div class="ctl">
-        <div class="ctl-top"><label for="flameHeightIn">Flame height</label><span class="val"><span id="flameHeightVal">60</span>%</span></div>
+        <div class="ctl-top"><label for="flameHeightIn">Flame height</label><span class="val"><input type="number" class="numIn" id="flameHeightNum" min="12" max="100" step="1" value="60">%</span></div>
         <input type="range" id="flameHeightIn" min="12" max="100" step="1" value="60">
       </div>
       <div class="ctl">
-        <div class="ctl-top"><label for="flameSizeIn">Flame size</label><span class="val" id="flameSizeVal">50% &middot; 20</span></div>
+        <div class="ctl-top"><label for="flameSizeIn">Flame size</label><span class="val"><input type="number" class="numIn" id="flameSizeNum" min="0" max="100" step="1" value="50">% &middot; <span id="flameSizePorts">20 ports</span></span></div>
         <input type="range" id="flameSizeIn" min="0" max="100" step="1" value="50">
       </div>
       <div class="ctl">
-        <div class="ctl-top"><label for="flickerIn">Flicker speed</label><span class="val"><span id="flickerVal">1.0</span>&times;</span></div>
+        <div class="ctl-top"><label for="flickerIn">Flicker speed</label><span class="val"><input type="number" class="numIn" id="flickerNum" min="0.2" max="2.4" step="0.05" value="1">&times;</span></div>
         <input type="range" id="flickerIn" min="0.2" max="2.4" step="0.05" value="1">
       </div>
       <div class="ctl">
-        <div class="ctl-top"><label for="windIn">Airflow</label><span class="val" id="windVal">still</span></div>
-        <input type="range" id="windIn" min="-100" max="100" step="1" value="12">
+        <div class="ctl-top"><label for="windIn">Airflow</label><span class="val"><input type="number" class="numIn" id="windNum" min="-100" max="100" step="1" value="0"> <span id="windDesc">still</span></span></div>
+        <input type="range" id="windIn" min="-100" max="100" step="1" value="0">
       </div>
       <div class="ctl">
-        <div class="ctl-top"><label for="turbIn">Turbulence</label><span class="val"><span id="turbVal">45</span>%</span></div>
-        <input type="range" id="turbIn" min="0" max="100" step="1" value="45">
+        <div class="ctl-top"><label for="turbIn">Turbulence</label><span class="val"><input type="number" class="numIn" id="turbNum" min="0" max="100" step="1" value="18">%</span></div>
+        <input type="range" id="turbIn" min="0" max="100" step="1" value="18">
       </div>
       <div class="ctl wide">
         <div class="ctl-top"><label for="colorIn">Flame color</label><span class="val" id="colorVal">#FF8A3D</span></div>
-        <input type="color" id="colorIn" value="#ff8a3d">
-      </div>
-      <div class="ctl wide">
-        <div class="ctl-top"><label>Presets</label><span class="val" id="fpsVal">&nbsp;</span></div>
-        <div class="swatches" id="swatches"></div>
+        <div class="colorRow">
+          <input type="color" id="colorIn" value="#ff8a3d">
+          <div class="swatches" id="swatches"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -242,13 +260,14 @@
 
   var state = {
     width: 1600, height: 300,
-    flameHeight: 60, flameSize: 50, flicker: 1, wind: 12, turb: 45,
+    flameHeight: 60, flameSize: 50, flicker: 1, wind: 0, turb: 18,
     color: "#ff8a3d", lit: true
   };
 
   var el = {};
   ["widthIn","heightIn","flameHeightIn","flameSizeIn","flickerIn","windIn","turbIn","colorIn",
-   "widthVal","heightVal","flameHeightVal","flameSizeVal","flickerVal","windVal","turbVal","colorVal",
+   "widthNum","heightNum","flameHeightNum","flameSizeNum","flickerNum","windNum","turbNum",
+   "flameSizePorts","windDesc","colorVal",
    "readout","powerBtn","powerLabel","fpsVal"].forEach(function (id) { el[id] = document.getElementById(id); });
 
   function loadSaved() {
@@ -468,7 +487,27 @@
     }
   }
 
-  var simTime = 0, emberFade = 1;
+  // Flame Height slider -> radiative cooling rate, calibrated so the slider
+  // reads as roughly the flame's actual fraction of the firebox height
+  // (measured against rendered pixel extent, not a raw physical constant).
+  var FLAME_HEIGHT_TABLE = [
+    [12, 4.07], [20, 2.68], [30, 1.94], [40, 1.56], [50, 1.27],
+    [60, 1.05], [70, 0.99], [80, 0.94], [90, 0.87], [100, 0.72]
+  ];
+  function coolKFromHeight(fh) {
+    var t = FLAME_HEIGHT_TABLE;
+    if (fh <= t[0][0]) return t[0][1];
+    if (fh >= t[t.length - 1][0]) return t[t.length - 1][1];
+    for (var i = 1; i < t.length; i++) {
+      if (fh <= t[i][0]) {
+        var a = t[i - 1], b = t[i];
+        var f = (fh - a[0]) / (b[0] - a[0]);
+        return a[1] + f * (b[1] - a[1]);
+      }
+    }
+  }
+
+  var simTime = 0;
 
   function step(dt) {
     simTime += dt;
@@ -478,7 +517,7 @@
     var turbN = state.turb / 100;
 
     // radiative cooling rate: the single knob that sets how far a hot parcel rises
-    var coolK = 13.5 * Math.pow(1.85 / 13.5, (state.flameHeight - 12) / 88);
+    var coolK = coolKFromHeight(state.flameHeight);
     coolK *= 1 + 0.45 * Math.abs(windN);
     var coolT = Math.exp(-coolK * dt);
     var fadeD = Math.exp(-(0.85 + 1.9 * Math.abs(windN)) * dt);
@@ -522,7 +561,13 @@
         v[i2] -= amt * 120 * dt;
       }
     }
-    emberFade += ((state.lit ? 1 : 0.1) - emberFade) * Math.min(1, dt * 2.2);
+    // lateral drag: keeps each port's plume anchored instead of drifting
+    // sideways and merging with its neighbors into one central column
+    var udrag = Math.exp(-1.6 * dt);
+    for (var dy = 1; dy < rows - 1; dy++) {
+      var drow = dy * cols;
+      for (var dx = 1; dx < cols - 1; dx++) u[drow + dx] *= udrag;
+    }
 
     bndVel();
 
@@ -607,8 +652,8 @@
     gctx.drawImage(off, 0, 0);
   }
 
-  /* ================= overlay: media bed + sparks ================= */
-  var bedProfile = [], embers = [], sparks = [], ovW = 0, ovH = 0;
+  /* ================= overlay: sparks ================= */
+  var sparks = [], ovW = 0, ovH = 0;
 
   function sizeOverlay() {
     var dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -618,20 +663,6 @@
     overlayCanvas.width = Math.round(w * dpr);
     overlayCanvas.height = Math.round(h * dpr);
     octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    if (!bedProfile.length) {
-      var walk = 0;
-      for (var i = 0; i <= 52; i++) {
-        walk += (Math.random() - 0.5) * 0.55;
-        walk = Math.max(-1, Math.min(1, walk));
-        bedProfile.push(walk);
-      }
-      for (var e = 0; e < 18; e++) {
-        embers.push({ x: Math.random(), y: 0.2 + Math.random() * 0.65,
-                      r: 0.8 + Math.random() * 1.8, ph: Math.random() * 6.28,
-                      sp: 0.6 + Math.random() * 1.7 });
-      }
-    }
   }
 
   function drawOverlay() {
@@ -648,36 +679,6 @@
       octx.fillStyle = "rgba(" + sparkRGB + "," + (a * 0.9).toFixed(3) + ")";
       octx.fillRect((s.gx / (cols - 1)) * ovW, (s.gy / (rows - 1)) * ovH, s.r, s.r);
     }
-
-    var top = ovH * 0.905, amp = ovH * 0.03;
-    octx.beginPath();
-    octx.moveTo(0, ovH);
-    var steps = bedProfile.length - 1;
-    for (var k = 0; k <= steps; k++) octx.lineTo((k / steps) * ovW, top + bedProfile[k] * amp);
-    octx.lineTo(ovW, ovH);
-    octx.closePath();
-    var g = octx.createLinearGradient(0, top - amp, 0, ovH);
-    g.addColorStop(0, "rgba(16,11,8,0.94)");
-    g.addColorStop(1, "rgba(0,0,0,1)");
-    octx.fillStyle = g;
-    octx.fill();
-
-    octx.save();
-    octx.clip();
-    var col = mix(base, [255, 86, 16], 0.55);
-    var emberRGB = (col[0]|0) + "," + (col[1]|0) + "," + (col[2]|0);
-    for (var j = 0; j < embers.length; j++) {
-      var em = embers[j];
-      var pulse = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(simTime * em.sp * 1.5 + em.ph));
-      var ex = em.x * ovW, ey = top + em.y * (ovH - top);
-      var rad = em.r * 5;
-      var rg = octx.createRadialGradient(ex, ey, 0, ex, ey, rad);
-      rg.addColorStop(0, "rgba(" + emberRGB + "," + (0.6 * pulse * emberFade).toFixed(3) + ")");
-      rg.addColorStop(1, "rgba(0,0,0,0)");
-      octx.fillStyle = rg;
-      octx.fillRect(ex - rad, ey - rad, rad * 2, rad * 2);
-    }
-    octx.restore();
   }
 
   /* ================= loop ================= */
@@ -708,26 +709,21 @@
   function fmtWind(w) {
     if (Math.abs(w) < 4) return "still";
     var s = Math.abs(w) > 66 ? "strong" : Math.abs(w) > 30 ? "steady" : "light";
-    return s + " " + (w > 0 ? "→" : "←") + " " + Math.abs(w);
+    return s + " " + (w > 0 ? "→" : "←");
   }
 
   function syncUI() {
-    el.widthIn.value = state.width;
-    el.heightIn.value = state.height;
-    el.flameHeightIn.value = state.flameHeight;
-    el.flameSizeIn.value = state.flameSize;
-    el.flickerIn.value = state.flicker;
-    el.windIn.value = state.wind;
-    el.turbIn.value = state.turb;
+    el.widthIn.value = state.width; el.widthNum.value = state.width;
+    el.heightIn.value = state.height; el.heightNum.value = state.height;
+    el.flameHeightIn.value = state.flameHeight; el.flameHeightNum.value = state.flameHeight;
+    el.flameSizeIn.value = state.flameSize; el.flameSizeNum.value = state.flameSize;
+    el.flickerIn.value = state.flicker; el.flickerNum.value = state.flicker;
+    el.windIn.value = state.wind; el.windNum.value = state.wind;
+    el.turbIn.value = state.turb; el.turbNum.value = state.turb;
     el.colorIn.value = state.color;
 
-    el.widthVal.textContent = state.width;
-    el.heightVal.textContent = state.height;
-    el.flameHeightVal.textContent = state.flameHeight;
-    el.flameSizeVal.textContent = state.flameSize + "% · " + portCount + " ports";
-    el.flickerVal.textContent = Number(state.flicker).toFixed(1);
-    el.windVal.textContent = fmtWind(state.wind);
-    el.turbVal.textContent = state.turb;
+    el.flameSizePorts.textContent = portCount + " ports";
+    el.windDesc.textContent = fmtWind(state.wind);
     el.colorVal.textContent = String(state.color).toUpperCase();
     el.readout.textContent = state.width + "×" + state.height + "  ·  " +
       cols + "×" + rows + " grid  ·  " + (state.width / state.height).toFixed(2) + ":1";
@@ -735,22 +731,33 @@
     el.powerLabel.textContent = state.lit ? "Lit" : "Off";
   }
 
-  function bind(input, key, round) {
-    input.addEventListener("input", function () {
-      var val = parseFloat(input.value);
-      state[key] = round ? Math.round(val) : val;
-      if ((key === "width" || key === "height") && setupGrid()) warm(24);
+  // Wires a range + a paired number input to the same state key. The range
+  // applies live (drag); the number input applies on blur/Enter so clamping
+  // doesn't fight the user mid-keystroke while they're typing a new value.
+  function bindPair(range, num, key, round) {
+    function commit(val) {
+      if (isNaN(val)) { num.value = state[key]; return; }
+      var min = parseFloat(range.min), max = parseFloat(range.max);
+      if (round) val = Math.round(val);
+      if (val < min) val = min; else if (val > max) val = max;
+      state[key] = val;
+      if (key === "width" || key === "height") { if (setupGrid()) warm(24); }
       if (key === "flameSize") buildBurner();
       syncUI(); persist();
+    }
+    range.addEventListener("input", function () { commit(parseFloat(range.value)); });
+    num.addEventListener("change", function () { commit(parseFloat(num.value)); });
+    num.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { commit(parseFloat(num.value)); num.blur(); }
     });
   }
-  bind(el.widthIn, "width", true);
-  bind(el.heightIn, "height", true);
-  bind(el.flameHeightIn, "flameHeight", true);
-  bind(el.flameSizeIn, "flameSize", true);
-  bind(el.flickerIn, "flicker", false);
-  bind(el.windIn, "wind", true);
-  bind(el.turbIn, "turb", true);
+  bindPair(el.widthIn, el.widthNum, "width", true);
+  bindPair(el.heightIn, el.heightNum, "height", true);
+  bindPair(el.flameHeightIn, el.flameHeightNum, "flameHeight", true);
+  bindPair(el.flameSizeIn, el.flameSizeNum, "flameSize", true);
+  bindPair(el.flickerIn, el.flickerNum, "flicker", false);
+  bindPair(el.windIn, el.windNum, "wind", true);
+  bindPair(el.turbIn, el.turbNum, "turb", true);
 
   el.colorIn.addEventListener("input", function () {
     state.color = el.colorIn.value; buildLUT(); syncUI(); persist();
