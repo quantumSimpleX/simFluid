@@ -288,8 +288,6 @@
   function mix(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
 
   var LUT = new Uint8ClampedArray(256 * 3);
-  var LUT_ROOT = new Uint8ClampedArray(256 * 3);
-  var ROOT_BLUE = [58, 126, 255];
 
   function buildLUT() {
     var base = hexToRgb(state.color);
@@ -304,8 +302,6 @@
       else               c = mix(hot, white, (t - 0.86) / 0.14);
       var o = i * 3;
       LUT[o] = c[0]; LUT[o+1] = c[1]; LUT[o+2] = c[2];
-      var r = mix(c, ROOT_BLUE, 0.7);
-      LUT_ROOT[o] = r[0]; LUT_ROOT[o+1] = r[1]; LUT_ROOT[o+2] = r[2];
     }
   }
 
@@ -368,13 +364,13 @@
     }
     var sz = state.flameSize / 100;
     var spacing = Math.max(5, Math.round(6 + 22 * sz));
-    var sigma = spacing * (0.28 + 0.10 * sz);
+    var sigma = spacing * (0.16 + 0.10 * sz);
     var burnerSpan = cols * 0.90;
     portCount = Math.max(2, Math.round(burnerSpan / spacing));
     for (var x = 0; x < cols; x++) {
       var nearest = Math.round(x / spacing) * spacing;
       var d = (x - nearest) / sigma;
-      var val = 0.36 + 0.64 * Math.exp(-0.5 * d * d);
+      var val = 0.03 + 0.97 * Math.exp(-0.5 * d * d);
       var fade = Math.min(1, Math.min(x, cols - 1 - x) / (cols * 0.05));
       srcProfile[x] = val * fade * fade;
       portPhase[x] = (Math.round(x / spacing) * 2.3999) % 6.2832;
@@ -595,6 +591,11 @@
       D[j] *= fadeD;
     }
 
+    // the floor is a no-slip wall (v=0 there), so heat/smoke that drifts down
+    // to it never drains and just pools into a hazy band; sink it instead
+    var floorRow = (rows - 1) * cols;
+    for (var fx = 0; fx < cols; fx++) { T[floorRow + fx] = 0; D[floorRow + fx] = 0; }
+
     /* --- sparks ride the real velocity field --- */
     if (state.lit && ovW && sparks.length < 80 && Math.random() < 14 * dt * (0.35 + turbN)) {
       var gx = 1 + Math.floor(Math.random() * (cols - 2));
@@ -617,11 +618,8 @@
   /* ================= render ================= */
   function render() {
     var data = imgData.data;
-    var rootRows = Math.max(2, Math.round(rows * 0.12));
     for (var y = 0; y < rows; y++) {
       var row = y * cols;
-      var fromBottom = rows - 1 - y;
-      var rootF = fromBottom < rootRows ? (1 - fromBottom / rootRows) : 0;
       for (var x = 0; x < cols; x++) {
         var i = row + x;
         var t = T[i], d = D[i];
@@ -634,14 +632,7 @@
         if (a <= 0.004) { data[o + 3] = 0; continue; }
         var li = t <= 0 ? 0 : (t >= 1 ? 255 : (t * 255) | 0);
         var lo = li * 3;
-        if (rootF > 0) {
-          var b = rootF * 0.8;
-          data[o]     = LUT[lo]     + (LUT_ROOT[lo]     - LUT[lo])     * b;
-          data[o + 1] = LUT[lo + 1] + (LUT_ROOT[lo + 1] - LUT[lo + 1]) * b;
-          data[o + 2] = LUT[lo + 2] + (LUT_ROOT[lo + 2] - LUT[lo + 2]) * b;
-        } else {
-          data[o] = LUT[lo]; data[o + 1] = LUT[lo + 1]; data[o + 2] = LUT[lo + 2];
-        }
+        data[o] = LUT[lo]; data[o + 1] = LUT[lo + 1]; data[o + 2] = LUT[lo + 2];
         data[o + 3] = a * 255;
       }
     }
