@@ -1,0 +1,803 @@
+<title>Ember Line</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --bezel-0: #0c0d0f;
+    --bezel-2: #232629;
+    --panel-bg: #15171a;
+    --panel-line: #2a2d31;
+    --ink: #ece6da;
+    --ink-dim: #9a938a;
+    --ink-faint: #5f5a54;
+    --accent: #ff8a3d;
+    --page-bg: #f4f1ec;
+    --page-ink: #26221c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --page-bg: #0e0d0c; --page-ink: #ece6da; }
+  }
+  :root[data-theme="dark"] { --page-bg: #0e0d0c; --page-ink: #ece6da; }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    padding-block: clamp(16px, 4vw, 44px);
+    padding-left: 16px; padding-right: 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 26px;
+  }
+
+  .masthead {
+    width: 100%; max-width: 1140px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .masthead h1 {
+    font-family: "Oswald", ui-sans-serif, sans-serif;
+    font-weight: 500; font-size: clamp(20px, 2.6vw, 28px);
+    letter-spacing: 0.02em; margin: 0; text-wrap: balance;
+  }
+  .masthead h1 span { color: var(--accent); }
+  .masthead p { margin: 0; font-size: 13px; opacity: 0.55; max-width: 40ch; }
+
+  .unit { width: 100%; max-width: 1140px; }
+
+  .bezel {
+    position: relative; width: 100%;
+    padding: clamp(9px, 1.5vw, 20px);
+    border-radius: 9px 9px 0 0;
+    background: linear-gradient(180deg, var(--bezel-2), var(--bezel-0) 72%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 30px 60px -28px rgba(0,0,0,0.65);
+  }
+
+  .firebox {
+    position: relative; width: 100%; overflow: hidden;
+    border-radius: 2px; background: #000;
+    box-shadow: 0 0 0 1px #000, inset 0 0 40px rgba(0,0,0,0.9);
+  }
+  .firebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #glowCanvas { filter: blur(10px) saturate(1.2); mix-blend-mode: screen; opacity: 0.8; }
+  #fireCanvas { filter: blur(0.6px); }
+
+  .sheen, .vignette { position: absolute; inset: 0; pointer-events: none; }
+  .sheen { background: linear-gradient(112deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 16%, rgba(255,255,255,0) 84%, rgba(255,255,255,0.028) 100%); }
+  .vignette { box-shadow: inset 0 0 min(90px, 9vw) rgba(0,0,0,0.78); }
+
+  .readout {
+    position: absolute; left: 13px; top: 10px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.07em;
+    color: rgba(255,205,155,0.4);
+    pointer-events: none; user-select: none;
+  }
+
+  .dock {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line); border-top: none;
+    border-radius: 0 0 9px 9px;
+    padding: 16px clamp(14px, 2.2vw, 24px) 20px;
+  }
+  .dock-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 15px;
+  }
+  .dock-head .label {
+    font-family: "Oswald", sans-serif; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-dim);
+  }
+  .power {
+    display: flex; align-items: center; gap: 8px;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: 0.08em;
+    color: var(--ink-dim); background: none;
+    border: 1px solid var(--panel-line); border-radius: 20px;
+    padding: 5px 13px 5px 9px; cursor: pointer;
+  }
+  .power .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 7px 1px var(--accent);
+    transition: background .25s, box-shadow .25s;
+  }
+  .power[data-on="false"] .dot { background: #454443; box-shadow: none; }
+  .power[data-on="false"] { color: var(--ink-faint); }
+
+  .controls {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+    gap: 17px 22px;
+  }
+  .ctl { display: flex; flex-direction: column; gap: 7px; }
+  .ctl-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ctl label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); }
+  .ctl .val {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 3px; background: var(--panel-line);
+    border-radius: 2px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: var(--ink); border: 2px solid var(--bezel-0);
+    box-shadow: 0 0 0 1px var(--panel-line); cursor: pointer; margin-top: -6px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--ink); border: 2px solid var(--bezel-0); cursor: pointer;
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent); }
+
+  .ctl.wide { grid-column: span 2; }
+  input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 26px; border: 1px solid var(--panel-line);
+    border-radius: 4px; padding: 0; background: none; cursor: pointer;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  .swatches { display: flex; gap: 6px; }
+  .swatches button {
+    width: 17px; height: 17px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.16); cursor: pointer; padding: 0;
+  }
+  .swatches button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer { max-width: 1140px; width: 100%; font-size: 11.5px; opacity: 0.42; text-align: center; }
+  footer code { font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+
+  @media (max-width: 500px) {
+    .controls { grid-template-columns: repeat(2, 1fr); }
+    .ctl.wide { grid-column: span 2; }
+  }
+</style>
+
+<div class="masthead">
+  <h1>Ember <span>Line</span></h1>
+  <p>Incompressible Navier&ndash;Stokes on a linear burner: buoyancy, vorticity confinement, pressure projection.</p>
+</div>
+
+<div class="unit">
+  <div class="bezel">
+    <div class="firebox" id="firebox">
+      <canvas id="glowCanvas"></canvas>
+      <canvas id="fireCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+      <div class="sheen"></div>
+      <div class="vignette"></div>
+      <div class="readout" id="readout"></div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div class="dock-head">
+      <span class="label">Burner</span>
+      <button class="power" id="powerBtn" data-on="true" type="button">
+        <span class="dot"></span><span id="powerLabel">Lit</span>
+      </button>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <div class="ctl-top"><label for="widthIn">Screen width</label><span class="val"><span id="widthVal">1600</span> px</span></div>
+        <input type="range" id="widthIn" min="600" max="2600" step="10" value="1600">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><label for="heightIn">Screen height</label><span class="val"><span id="heightVal">300</span> px</span></div>
+        <input type="range" id="heightIn" min="140" max="620" step="5" value="300">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><label for="flameHeightIn">Flame height</label><span class="val"><span id="flameHeightVal">60</span>%</span></div>
+        <input type="range" id="flameHeightIn" min="12" max="100" step="1" value="60">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><label for="flameSizeIn">Flame size</label><span class="val" id="flameSizeVal">50% &middot; 20</span></div>
+        <input type="range" id="flameSizeIn" min="0" max="100" step="1" value="50">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><label for="flickerIn">Flicker speed</label><span class="val"><span id="flickerVal">1.0</span>&times;</span></div>
+        <input type="range" id="flickerIn" min="0.2" max="2.4" step="0.05" value="1">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><label for="windIn">Airflow</label><span class="val" id="windVal">still</span></div>
+        <input type="range" id="windIn" min="-100" max="100" step="1" value="12">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><label for="turbIn">Turbulence</label><span class="val"><span id="turbVal">45</span>%</span></div>
+        <input type="range" id="turbIn" min="0" max="100" step="1" value="45">
+      </div>
+      <div class="ctl wide">
+        <div class="ctl-top"><label for="colorIn">Flame color</label><span class="val" id="colorVal">#FF8A3D</span></div>
+        <input type="color" id="colorIn" value="#ff8a3d">
+      </div>
+      <div class="ctl wide">
+        <div class="ctl-top"><label>Presets</label><span class="val" id="fpsVal">&nbsp;</span></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Solved on-device each frame &mdash; advection, vorticity confinement, then a Gauss&ndash;Seidel pressure solve to enforce <code>&nabla;&middot;u = 0</code>.</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var firebox = document.getElementById("firebox");
+  var fireCanvas = document.getElementById("fireCanvas");
+  var glowCanvas = document.getElementById("glowCanvas");
+  var overlayCanvas = document.getElementById("overlayCanvas");
+  var fctx = fireCanvas.getContext("2d");
+  var gctx = glowCanvas.getContext("2d");
+  var octx = overlayCanvas.getContext("2d");
+
+  var ROWS = 60, MAX_COLS = 320, MIN_COLS = 90, PRESSURE_ITERS = 12;
+
+  var state = {
+    width: 1600, height: 300,
+    flameHeight: 60, flameSize: 50, flicker: 1, wind: 12, turb: 45,
+    color: "#ff8a3d", lit: true
+  };
+
+  var el = {};
+  ["widthIn","heightIn","flameHeightIn","flameSizeIn","flickerIn","windIn","turbIn","colorIn",
+   "widthVal","heightVal","flameHeightVal","flameSizeVal","flickerVal","windVal","turbVal","colorVal",
+   "readout","powerBtn","powerLabel","fpsVal"].forEach(function (id) { el[id] = document.getElementById(id); });
+
+  function loadSaved() {
+    try {
+      var raw = localStorage.getItem("emberline-ns");
+      if (raw) { var s = JSON.parse(raw); for (var k in s) if (k in state) state[k] = s[k]; }
+    } catch (e) {}
+  }
+  function persist() {
+    try { localStorage.setItem("emberline-ns", JSON.stringify(state)); } catch (e) {}
+  }
+
+  /* ================= color ramp ================= */
+  function hexToRgb(h) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+    return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [255,138,61];
+  }
+  function mix(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+
+  var LUT = new Uint8ClampedArray(256 * 3);
+  var LUT_ROOT = new Uint8ClampedArray(256 * 3);
+  var ROOT_BLUE = [58, 126, 255];
+
+  function buildLUT() {
+    var base = hexToRgb(state.color);
+    var ember = mix(mix(base, [104, 14, 2], 0.5), [0,0,0], 0.45);
+    var hot   = mix(base, [255, 246, 214], 0.62);
+    var white = [255, 251, 236];
+    for (var i = 0; i < 256; i++) {
+      var t = i / 255, c;
+      if (t < 0.20)      c = mix([12,2,0], ember, t / 0.20);
+      else if (t < 0.56) c = mix(ember, base, (t - 0.20) / 0.36);
+      else if (t < 0.86) c = mix(base, hot, (t - 0.56) / 0.30);
+      else               c = mix(hot, white, (t - 0.86) / 0.14);
+      var o = i * 3;
+      LUT[o] = c[0]; LUT[o+1] = c[1]; LUT[o+2] = c[2];
+      var r = mix(c, ROOT_BLUE, 0.7);
+      LUT_ROOT[o] = r[0]; LUT_ROOT[o+1] = r[1]; LUT_ROOT[o+2] = r[2];
+    }
+  }
+
+  /* ================= value noise (turbulence seeding at the ports) ================= */
+  var NS = 64, noiseTex = new Float32Array(NS * NS);
+  for (var q = 0; q < NS * NS; q++) noiseTex[q] = Math.random() * 2 - 1;
+  function noise2(x, y) {
+    var xi = Math.floor(x), yi = Math.floor(y);
+    var fx = x - xi, fy = y - yi;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    var x0 = ((xi % NS) + NS) % NS, x1 = (x0 + 1) % NS;
+    var y0 = ((yi % NS) + NS) % NS, y1 = (y0 + 1) % NS;
+    var a = noiseTex[y0*NS+x0], b = noiseTex[y0*NS+x1];
+    var c = noiseTex[y1*NS+x0], d = noiseTex[y1*NS+x1];
+    var tp = a + (b - a) * fx, bt = c + (d - c) * fx;
+    return tp + (bt - tp) * fy;
+  }
+
+  /* ================= fields ================= */
+  var cols, rows = ROWS, N;
+  var u, v, u0, v0, T, T0, D, D0, p, div, curl, srcProfile, portPhase;
+  var imgData, off, offx;
+
+  // returns true when the grid was actually rebuilt (aspect changed the column count)
+  function setupGrid() {
+    var ratio = state.width / state.height;
+    var newCols = Math.max(MIN_COLS, Math.min(MAX_COLS, Math.round(rows * ratio)));
+    firebox.style.aspectRatio = state.width + " / " + state.height;
+    if (newCols === cols) { sizeOverlay(); return false; }
+
+    cols = newCols;
+    N = cols * rows;
+
+    u = new Float32Array(N); v = new Float32Array(N);
+    u0 = new Float32Array(N); v0 = new Float32Array(N);
+    T = new Float32Array(N); T0 = new Float32Array(N);
+    D = new Float32Array(N); D0 = new Float32Array(N);
+    p = new Float32Array(N); div = new Float32Array(N); curl = new Float32Array(N);
+
+    buildBurner();
+
+    off = document.createElement("canvas");
+    off.width = cols; off.height = rows;
+    offx = off.getContext("2d");
+    imgData = offx.createImageData(cols, rows);
+
+    fireCanvas.width = glowCanvas.width = cols;
+    fireCanvas.height = glowCanvas.height = rows;
+    sizeOverlay();
+    return true;
+  }
+
+  // Port spacing sets how wide each tongue is: tight ports merge into many slim
+  // flames, wide ports give fewer, fatter ones drawing more fuel each.
+  var portCount = 0;
+  function buildBurner() {
+    if (!srcProfile || srcProfile.length !== cols) {
+      srcProfile = new Float32Array(cols);
+      portPhase = new Float32Array(cols);
+    }
+    var sz = state.flameSize / 100;
+    var spacing = Math.max(5, Math.round(6 + 22 * sz));
+    var sigma = spacing * (0.28 + 0.10 * sz);
+    var burnerSpan = cols * 0.90;
+    portCount = Math.max(2, Math.round(burnerSpan / spacing));
+    for (var x = 0; x < cols; x++) {
+      var nearest = Math.round(x / spacing) * spacing;
+      var d = (x - nearest) / sigma;
+      var val = 0.36 + 0.64 * Math.exp(-0.5 * d * d);
+      var fade = Math.min(1, Math.min(x, cols - 1 - x) / (cols * 0.05));
+      srcProfile[x] = val * fade * fade;
+      portPhase[x] = (Math.round(x / spacing) * 2.3999) % 6.2832;
+    }
+  }
+
+  /* ================= solver ================= */
+  function bilerp(f, x, y) {
+    if (x < 0) x = 0; else if (x > cols - 1.001) x = cols - 1.001;
+    if (y < 0) y = 0; else if (y > rows - 1.001) y = rows - 1.001;
+    var xi = x | 0, yi = y | 0;
+    var fx = x - xi, fy = y - yi;
+    var i0 = yi * cols + xi, i1 = i0 + cols;
+    var a = f[i0], b = f[i0 + 1], c = f[i1], d = f[i1 + 1];
+    var tp = a + (b - a) * fx, bt = c + (d - c) * fx;
+    return tp + (bt - tp) * fy;
+  }
+
+  function advect(dst, src, dt) {
+    for (var y = 0; y < rows; y++) {
+      var row = y * cols;
+      for (var x = 0; x < cols; x++) {
+        var i = row + x;
+        dst[i] = bilerp(src, x - dt * u[i], y - dt * v[i]);
+      }
+    }
+  }
+
+  // open sides and top, solid floor
+  function bndVel() {
+    for (var y = 0; y < rows; y++) {
+      var l = y * cols, r = l + cols - 1;
+      u[l] = u[l + 1]; v[l] = v[l + 1];
+      u[r] = u[r - 1]; v[r] = v[r - 1];
+    }
+    for (var x = 0; x < cols; x++) {
+      var t = x, b = (rows - 1) * cols + x;
+      u[t] = u[t + cols];
+      v[t] = v[t + cols] < 0 ? v[t + cols] : 0;   // outflow only
+      u[b] = 0; v[b] = 0;                          // no-slip floor
+    }
+  }
+
+  function bndPressure() {
+    for (var y = 0; y < rows; y++) {
+      var l = y * cols, r = l + cols - 1;
+      p[l] = 0; p[r] = 0;                          // open: p = 0
+    }
+    for (var x = 0; x < cols; x++) {
+      p[x] = 0;                                    // open top
+      var b = (rows - 1) * cols + x;
+      p[b] = p[b - cols];                          // solid floor: dp/dn = 0
+    }
+  }
+
+  function project() {
+    var y, x, i, row;
+    for (y = 1; y < rows - 1; y++) {
+      row = y * cols;
+      for (x = 1; x < cols - 1; x++) {
+        i = row + x;
+        div[i] = -0.5 * ((u[i + 1] - u[i - 1]) + (v[i + cols] - v[i - cols]));
+        p[i] = 0;
+      }
+    }
+    bndPressure();
+    for (var k = 0; k < PRESSURE_ITERS; k++) {
+      for (y = 1; y < rows - 1; y++) {
+        row = y * cols;
+        for (x = 1; x < cols - 1; x++) {
+          i = row + x;
+          p[i] = (div[i] + p[i - 1] + p[i + 1] + p[i - cols] + p[i + cols]) * 0.25;
+        }
+      }
+      bndPressure();
+    }
+    for (y = 1; y < rows - 1; y++) {
+      row = y * cols;
+      for (x = 1; x < cols - 1; x++) {
+        i = row + x;
+        u[i] -= 0.5 * (p[i + 1] - p[i - 1]);
+        v[i] -= 0.5 * (p[i + cols] - p[i - cols]);
+      }
+    }
+    bndVel();
+  }
+
+  function vorticityConfinement(dt, eps) {
+    if (eps <= 0) return;
+    var y, x, i, row;
+    for (y = 1; y < rows - 1; y++) {
+      row = y * cols;
+      for (x = 1; x < cols - 1; x++) {
+        i = row + x;
+        curl[i] = (v[i + 1] - v[i - 1]) * 0.5 - (u[i + cols] - u[i - cols]) * 0.5;
+      }
+    }
+    for (y = 2; y < rows - 2; y++) {
+      row = y * cols;
+      for (x = 2; x < cols - 2; x++) {
+        i = row + x;
+        var nx = (Math.abs(curl[i + 1]) - Math.abs(curl[i - 1])) * 0.5;
+        var ny = (Math.abs(curl[i + cols]) - Math.abs(curl[i - cols])) * 0.5;
+        var len = Math.sqrt(nx * nx + ny * ny) + 1e-6;
+        nx /= len; ny /= len;
+        var w = curl[i];
+        u[i] += eps * dt * ny * w;
+        v[i] -= eps * dt * nx * w;
+      }
+    }
+  }
+
+  var simTime = 0, emberFade = 1;
+
+  function step(dt) {
+    simTime += dt;
+
+    var fh = state.flameHeight / 100;
+    var windN = state.wind / 100;
+    var turbN = state.turb / 100;
+
+    // radiative cooling rate: the single knob that sets how far a hot parcel rises
+    var coolK = 13.5 * Math.pow(1.85 / 13.5, (state.flameHeight - 12) / 88);
+    coolK *= 1 + 0.45 * Math.abs(windN);
+    var coolT = Math.exp(-coolK * dt);
+    var fadeD = Math.exp(-(0.85 + 1.9 * Math.abs(windN)) * dt);
+
+    var BUOY = 168, AMBIENT = 0.035;
+
+    /* --- forces --- */
+    for (var y = 1; y < rows - 1; y++) {
+      var row = y * cols;
+      var hNorm = (rows - 1 - y) / (rows - 1);
+      var windAcc = windN * 230 * (0.3 + 0.7 * hNorm);
+      for (var x = 1; x < cols - 1; x++) {
+        var i = row + x;
+        var t = T[i];
+        if (t > AMBIENT) v[i] -= BUOY * (t - AMBIENT) * dt;   // negative y is up
+        u[i] += windAcc * dt;
+      }
+    }
+
+    vorticityConfinement(dt, 6 + 26 * turbN);
+
+    /* --- burner: inject fuel, heat and a vertical jet --- */
+    if (state.lit) {
+      var jetRow = rows - 3, jetRow2 = rows - 4;
+      var pulseRate = 3.4 * (0.7 + 0.6 * turbN);
+      for (var sx = 1; sx < cols - 1; sx++) {
+        var s = srcProfile[sx];
+        if (s <= 0.001) continue;
+        var pulse = 0.82 + 0.18 * Math.sin(simTime * pulseRate + portPhase[sx]);
+        var amt = s * pulse;
+        var i1 = jetRow * cols + sx, i2 = jetRow2 * cols + sx;
+
+        T[i1] += (1.0 - T[i1]) * Math.min(1, amt * 26 * dt);
+        D[i1] += (1.0 - D[i1]) * Math.min(1, amt * 22 * dt);
+        if (T[i2] < 0.9) T[i2] += (0.9 - T[i2]) * Math.min(1, amt * 14 * dt);
+        if (D[i2] < 0.9) D[i2] += (0.9 - D[i2]) * Math.min(1, amt * 12 * dt);
+
+        v[i1] -= amt * 190 * dt;                                   // upward jet
+        var jitter = noise2(sx * 0.22, simTime * 2.4);
+        u[i1] += jitter * turbN * 340 * dt * amt;                  // shear seeding
+        v[i2] -= amt * 120 * dt;
+      }
+    }
+    emberFade += ((state.lit ? 1 : 0.1) - emberFade) * Math.min(1, dt * 2.2);
+
+    bndVel();
+
+    /* --- advect velocity, then project to a divergence-free field --- */
+    u0.set(u); v0.set(v);
+    for (var yy = 0; yy < rows; yy++) {
+      var r2 = yy * cols;
+      for (var xx = 0; xx < cols; xx++) {
+        var ii = r2 + xx;
+        var px = xx - dt * u0[ii], py = yy - dt * v0[ii];
+        u[ii] = bilerp(u0, px, py);
+        v[ii] = bilerp(v0, px, py);
+      }
+    }
+    bndVel();
+    project();
+
+    /* --- advect heat and fuel through the solved flow --- */
+    T0.set(T); D0.set(D);
+    advect(T, T0, dt);
+    advect(D, D0, dt);
+
+    for (var j = 0; j < N; j++) {
+      T[j] *= coolT;
+      D[j] *= fadeD;
+    }
+
+    /* --- sparks ride the real velocity field --- */
+    if (state.lit && ovW && sparks.length < 80 && Math.random() < 14 * dt * (0.35 + turbN)) {
+      var gx = 1 + Math.floor(Math.random() * (cols - 2));
+      if (srcProfile[gx] > 0.4) {
+        sparks.push({ gx: gx, gy: rows - 4, life: 0.55 + Math.random() * 0.55,
+                      r: Math.random() < 0.72 ? 1 : 1.7, ph: Math.random() * 6.28 });
+      }
+    }
+    for (var k2 = sparks.length - 1; k2 >= 0; k2--) {
+      var sp = sparks[k2];
+      var gi = (Math.max(0, Math.min(rows - 1, Math.round(sp.gy))) * cols) +
+               Math.max(0, Math.min(cols - 1, Math.round(sp.gx)));
+      sp.gx += u[gi] * dt;
+      sp.gy += v[gi] * dt * 0.92;
+      sp.life -= dt * 0.75;
+      if (sp.life <= 0 || sp.gy < 0 || sp.gx < 0 || sp.gx > cols - 1) sparks.splice(k2, 1);
+    }
+  }
+
+  /* ================= render ================= */
+  function render() {
+    var data = imgData.data;
+    var rootRows = Math.max(2, Math.round(rows * 0.12));
+    for (var y = 0; y < rows; y++) {
+      var row = y * cols;
+      var fromBottom = rows - 1 - y;
+      var rootF = fromBottom < rootRows ? (1 - fromBottom / rootRows) : 0;
+      for (var x = 0; x < cols; x++) {
+        var i = row + x;
+        var t = T[i], d = D[i];
+        var o = i * 4;
+        var vis = d * 1.8;
+        if (vis > 1) vis = 1;
+        var glow = (t - 0.055) / 0.16;
+        if (glow < 0) glow = 0; else if (glow > 1) glow = 1;
+        var a = vis * glow;
+        if (a <= 0.004) { data[o + 3] = 0; continue; }
+        var li = t <= 0 ? 0 : (t >= 1 ? 255 : (t * 255) | 0);
+        var lo = li * 3;
+        if (rootF > 0) {
+          var b = rootF * 0.8;
+          data[o]     = LUT[lo]     + (LUT_ROOT[lo]     - LUT[lo])     * b;
+          data[o + 1] = LUT[lo + 1] + (LUT_ROOT[lo + 1] - LUT[lo + 1]) * b;
+          data[o + 2] = LUT[lo + 2] + (LUT_ROOT[lo + 2] - LUT[lo + 2]) * b;
+        } else {
+          data[o] = LUT[lo]; data[o + 1] = LUT[lo + 1]; data[o + 2] = LUT[lo + 2];
+        }
+        data[o + 3] = a * 255;
+      }
+    }
+    offx.putImageData(imgData, 0, 0);
+    fctx.clearRect(0, 0, cols, rows);
+    fctx.drawImage(off, 0, 0);
+    gctx.clearRect(0, 0, cols, rows);
+    gctx.drawImage(off, 0, 0);
+  }
+
+  /* ================= overlay: media bed + sparks ================= */
+  var bedProfile = [], embers = [], sparks = [], ovW = 0, ovH = 0;
+
+  function sizeOverlay() {
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = firebox.clientWidth, h = firebox.clientHeight;
+    if (!w || !h) return;
+    ovW = w; ovH = h;
+    overlayCanvas.width = Math.round(w * dpr);
+    overlayCanvas.height = Math.round(h * dpr);
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (!bedProfile.length) {
+      var walk = 0;
+      for (var i = 0; i <= 52; i++) {
+        walk += (Math.random() - 0.5) * 0.55;
+        walk = Math.max(-1, Math.min(1, walk));
+        bedProfile.push(walk);
+      }
+      for (var e = 0; e < 18; e++) {
+        embers.push({ x: Math.random(), y: 0.2 + Math.random() * 0.65,
+                      r: 0.8 + Math.random() * 1.8, ph: Math.random() * 6.28,
+                      sp: 0.6 + Math.random() * 1.7 });
+      }
+    }
+  }
+
+  function drawOverlay() {
+    if (!ovW) return;
+    octx.clearRect(0, 0, ovW, ovH);
+    var base = hexToRgb(state.color);
+    var sparkCol = mix(base, [255, 238, 198], 0.55);
+    var sparkRGB = (sparkCol[0]|0) + "," + (sparkCol[1]|0) + "," + (sparkCol[2]|0);
+
+    for (var i = 0; i < sparks.length; i++) {
+      var s = sparks[i];
+      var a = Math.max(0, Math.min(1, s.life)) * (0.45 + 0.55 * Math.sin(simTime * 11 + s.ph));
+      if (a <= 0) continue;
+      octx.fillStyle = "rgba(" + sparkRGB + "," + (a * 0.9).toFixed(3) + ")";
+      octx.fillRect((s.gx / (cols - 1)) * ovW, (s.gy / (rows - 1)) * ovH, s.r, s.r);
+    }
+
+    var top = ovH * 0.905, amp = ovH * 0.03;
+    octx.beginPath();
+    octx.moveTo(0, ovH);
+    var steps = bedProfile.length - 1;
+    for (var k = 0; k <= steps; k++) octx.lineTo((k / steps) * ovW, top + bedProfile[k] * amp);
+    octx.lineTo(ovW, ovH);
+    octx.closePath();
+    var g = octx.createLinearGradient(0, top - amp, 0, ovH);
+    g.addColorStop(0, "rgba(16,11,8,0.94)");
+    g.addColorStop(1, "rgba(0,0,0,1)");
+    octx.fillStyle = g;
+    octx.fill();
+
+    octx.save();
+    octx.clip();
+    var col = mix(base, [255, 86, 16], 0.55);
+    var emberRGB = (col[0]|0) + "," + (col[1]|0) + "," + (col[2]|0);
+    for (var j = 0; j < embers.length; j++) {
+      var em = embers[j];
+      var pulse = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(simTime * em.sp * 1.5 + em.ph));
+      var ex = em.x * ovW, ey = top + em.y * (ovH - top);
+      var rad = em.r * 5;
+      var rg = octx.createRadialGradient(ex, ey, 0, ex, ey, rad);
+      rg.addColorStop(0, "rgba(" + emberRGB + "," + (0.6 * pulse * emberFade).toFixed(3) + ")");
+      rg.addColorStop(1, "rgba(0,0,0,0)");
+      octx.fillStyle = rg;
+      octx.fillRect(ex - rad, ey - rad, rad * 2, rad * 2);
+    }
+    octx.restore();
+  }
+
+  /* ================= loop ================= */
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var lastTs = 0, fpsAcc = 0, fpsN = 0;
+
+  function loop(ts) {
+    var real = lastTs ? (ts - lastTs) / 1000 : 0.0167;
+    lastTs = ts;
+    if (real > 0.05) real = 0.05;
+
+    var dt = real * state.flicker * (reduced ? 0.4 : 1);
+    if (dt > 0.033) dt = 0.033;
+
+    step(dt);
+    render();
+    drawOverlay();
+
+    fpsAcc += real; fpsN++;
+    if (fpsN >= 45) {
+      el.fpsVal.textContent = Math.round(fpsN / fpsAcc) + " fps";
+      fpsAcc = 0; fpsN = 0;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ================= UI ================= */
+  function fmtWind(w) {
+    if (Math.abs(w) < 4) return "still";
+    var s = Math.abs(w) > 66 ? "strong" : Math.abs(w) > 30 ? "steady" : "light";
+    return s + " " + (w > 0 ? "→" : "←") + " " + Math.abs(w);
+  }
+
+  function syncUI() {
+    el.widthIn.value = state.width;
+    el.heightIn.value = state.height;
+    el.flameHeightIn.value = state.flameHeight;
+    el.flameSizeIn.value = state.flameSize;
+    el.flickerIn.value = state.flicker;
+    el.windIn.value = state.wind;
+    el.turbIn.value = state.turb;
+    el.colorIn.value = state.color;
+
+    el.widthVal.textContent = state.width;
+    el.heightVal.textContent = state.height;
+    el.flameHeightVal.textContent = state.flameHeight;
+    el.flameSizeVal.textContent = state.flameSize + "% · " + portCount + " ports";
+    el.flickerVal.textContent = Number(state.flicker).toFixed(1);
+    el.windVal.textContent = fmtWind(state.wind);
+    el.turbVal.textContent = state.turb;
+    el.colorVal.textContent = String(state.color).toUpperCase();
+    el.readout.textContent = state.width + "×" + state.height + "  ·  " +
+      cols + "×" + rows + " grid  ·  " + (state.width / state.height).toFixed(2) + ":1";
+    el.powerBtn.dataset.on = String(state.lit);
+    el.powerLabel.textContent = state.lit ? "Lit" : "Off";
+  }
+
+  function bind(input, key, round) {
+    input.addEventListener("input", function () {
+      var val = parseFloat(input.value);
+      state[key] = round ? Math.round(val) : val;
+      if ((key === "width" || key === "height") && setupGrid()) warm(24);
+      if (key === "flameSize") buildBurner();
+      syncUI(); persist();
+    });
+  }
+  bind(el.widthIn, "width", true);
+  bind(el.heightIn, "height", true);
+  bind(el.flameHeightIn, "flameHeight", true);
+  bind(el.flameSizeIn, "flameSize", true);
+  bind(el.flickerIn, "flicker", false);
+  bind(el.windIn, "wind", true);
+  bind(el.turbIn, "turb", true);
+
+  el.colorIn.addEventListener("input", function () {
+    state.color = el.colorIn.value; buildLUT(); syncUI(); persist();
+  });
+
+  [["#ff8a3d","Gas amber"], ["#ff4a1c","Hardwood"], ["#ffd27a","Bright"],
+   ["#4a9dff","Cool blue"], ["#59ffc4","Copper green"], ["#ff5bb0","Lithium"]]
+  .forEach(function (pr) {
+    var b = document.createElement("button");
+    b.type = "button"; b.style.background = pr[0];
+    b.title = pr[1]; b.setAttribute("aria-label", pr[1]);
+    b.addEventListener("click", function () {
+      state.color = pr[0]; buildLUT(); syncUI(); persist();
+    });
+    document.getElementById("swatches").appendChild(b);
+  });
+
+  el.powerBtn.addEventListener("click", function () {
+    state.lit = !state.lit; syncUI(); persist();
+  });
+
+  if (window.ResizeObserver) new ResizeObserver(sizeOverlay).observe(firebox);
+  else window.addEventListener("resize", sizeOverlay);
+
+  /* ================= boot ================= */
+  function warm(n) { for (var i = 0; i < n; i++) step(1 / 60); }
+
+  function start(saved) {
+    if (saved && typeof saved === "object") {
+      for (var k in saved) if (k in state) state[k] = saved[k];
+    }
+    setupGrid();
+    buildLUT();
+    syncUI();
+    warm(90);
+    render();
+    drawOverlay();
+    requestAnimationFrame(loop);
+  }
+
+  loadSaved();
+  if (window.claude && window.claude.hot) {
+    window.claude.hot.snapshot(function () { return state; });
+    if (window.claude.hot.ready) window.claude.hot.ready(start);
+    else start(window.claude.hot.data || {});
+  } else {
+    start();
+  }
+})();
+</script>
